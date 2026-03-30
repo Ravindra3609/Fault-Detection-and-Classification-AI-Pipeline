@@ -1,5 +1,10 @@
 # FDC-AI — Equipment Fault Detection & Classification Pipeline
 
+> **FDC-AI Fault Detection Pipeline** — Built end-to-end equipment fault detection system on NASA CMAPSS sensor degradation data. Implemented Isolation Forest + PyTorch Autoencoder (unsupervised anomaly detection) + XGBoost fault classifier with SHAP sensor attribution, deployed via FastAPI with live inference dashboard. Hybrid pipeline achieved F1 >0.90 on fault classification with interpretable per-sensor anomaly contributions.
+
+**Tech:** `fault-detection` `FDC` `semiconductor` `anomaly-detection` `autoencoder` `xgboost` `shap` `fastapi` `pytorch` `cmapss` `predictive-maintenance`
+
+
 <img width="1462" height="655" alt="Screenshot 2026-03-30 at 5 09 53 PM" src="https://github.com/user-attachments/assets/57d1baca-a66b-41d9-a7d2-a5530a1c2ad4" />
 
 
@@ -194,11 +199,3 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 Run `python train.py` first before starting the server.
 
 ---
-
-## Resume line
-
-> **FDC-AI Fault Detection Pipeline** — Built end-to-end equipment fault detection system on NASA CMAPSS sensor degradation data. Implemented Isolation Forest + PyTorch Autoencoder (unsupervised anomaly detection) + XGBoost fault classifier with SHAP sensor attribution, deployed via FastAPI with live inference dashboard. Hybrid pipeline achieved F1 >0.90 on fault classification with interpretable per-sensor anomaly contributions.
-
-**GitHub repo name:** `fdc-ai-fault-detection`
-
-**Tags:** `fault-detection` `FDC` `semiconductor` `anomaly-detection` `autoencoder` `xgboost` `shap` `fastapi` `pytorch` `cmapss` `predictive-maintenance`
