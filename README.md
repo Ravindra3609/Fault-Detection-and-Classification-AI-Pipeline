@@ -1,5 +1,12 @@
 # FDC-AI — Equipment Fault Detection & Classification Pipeline
 
+<img width="1462" height="655" alt="Screenshot 2026-03-30 at 5 09 53 PM" src="https://github.com/user-attachments/assets/57d1baca-a66b-41d9-a7d2-a5530a1c2ad4" />
+
+
+<img width="1462" height="641" alt="Screenshot 2026-03-30 at 5 10 10 PM" src="https://github.com/user-attachments/assets/60414c17-acc0-4956-ba74-a73bf4784829" />
+
+
+
 **End-to-end Fault Detection and Classification (FDC) system for semiconductor/industrial equipment**  
 Isolation Forest + PyTorch Autoencoder + XGBoost + SHAP → FastAPI + Dashboard
 
