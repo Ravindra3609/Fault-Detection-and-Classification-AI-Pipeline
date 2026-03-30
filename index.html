@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FDC-AI — Fault Detection Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg:       #080f1e;
+    --surface:  #0d1829;
+    --card:     #111e30;
+    --border:   #1e2e45;
+    --border2:  #2a3f5a;
+    --text:     #e2eaf5;
+    --muted:    #6b8aad;
+    --accent:   #0ea5e9;
+    --green:    #22c55e;
+    --red:      #ef4444;
+    --orange:   #f97316;
+    --yellow:   #eab308;
+    --mono:     'IBM Plex Mono', monospace;
+    --sans:     'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+
+  /* Header */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .header-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+  .header h1 { font-size: 16px; font-weight: 500; letter-spacing: .02em; }
+  .header-sub { font-size: 12px; color: var(--muted); margin-left: auto; font-family: var(--mono); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 6px; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 340px 1fr; min-height: calc(100vh - 52px); }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    margin-bottom: 8px;
+  }
+  .btn {
+    width: 100%;
+    padding: 10px 0;
+    border-radius: 8px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text);
+    font-size: 13px;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: all .15s;
+    font-weight: 500;
+  }
+  .btn:hover { background: var(--card); border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { opacity: .9; }
+  .btn.danger  { border-color: var(--red); color: var(--red); }
+  .btn.danger:hover { background: rgba(239,68,68,.08); }
+
+  .radio-group { display: flex; gap: 6px; }
+  .radio-btn {
+    flex: 1; padding: 7px; border: 1px solid var(--border2);
+    border-radius: 6px; background: transparent; color: var(--muted);
+    font-size: 12px; cursor: pointer; transition: all .15s; text-align: center;
+  }
+  .radio-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(14,165,233,.08); }
+
+  .divider { height: 1px; background: var(--border); }
+
+  /* Metric cards */
+  .metric-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .metric-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .metric-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  .metric-val { font-size: 20px; font-weight: 500; font-family: var(--mono); }
+  .metric-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .val-green { color: var(--green); }
+  .val-red   { color: var(--red); }
+  .val-blue  { color: var(--accent); }
+  .val-orange{ color: var(--orange); }
+
+  /* Main content */
+  .main { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* Result card */
+  .result-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .result-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .verdict {
+    font-size: 18px;
+    font-weight: 600;
+    font-family: var(--mono);
+    letter-spacing: .04em;
+  }
+  .verdict.fault  { color: var(--red); }
+  .verdict.normal { color: var(--green); }
+  .verdict.idle   { color: var(--muted); }
+  .proba-bar-wrap { flex: 1; }
+  .proba-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .proba-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .proba-fill { height: 100%; border-radius: 4px; transition: width .5s ease; }
+  .proba-val { font-size: 13px; font-family: var(--mono); color: var(--text); margin-left: 10px; }
+
+  /* Score row */
+  .score-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); }
+  .score-cell { background: var(--card); padding: 14px 18px; }
+  .score-name { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .score-val  { font-size: 22px; font-weight: 500; font-family: var(--mono); }
+  .score-badge {
+    display: inline-block; padding: 2px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 500; margin-top: 4px;
+  }
+  .badge-anomaly { background: rgba(239,68,68,.15); color: var(--red); border: 1px solid rgba(239,68,68,.3); }
+  .badge-normal  { background: rgba(34,197,94,.12); color: var(--green); border: 1px solid rgba(34,197,94,.3); }
+
+  /* SHAP section */
+  .shap-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .shap-title { font-size: 13px; font-weight: 500; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .shap-title .tag { font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(14,165,233,.12); color: var(--accent); border: 1px solid rgba(14,165,233,.2); font-family: var(--mono); }
+  .shap-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+  .shap-row:last-child { border-bottom: none; }
+  .shap-feat { font-size: 12px; font-family: var(--mono); color: var(--muted); width: 200px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .shap-bar-wrap { flex: 1; height: 16px; position: relative; }
+  .shap-center { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--border2); }
+  .shap-bar-inner { position: absolute; top: 3px; height: 10px; border-radius: 2px; transition: all .4s; }
+  .shap-pos { background: var(--red);   opacity: .75; }
+  .shap-neg { background: var(--green); opacity: .75; }
+  .shap-num { font-size: 11px; font-family: var(--mono); color: var(--muted); width: 70px; text-align: right; flex-shrink: 0; }
+
+  /* Importance chart */
+  .importance-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .imp-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .imp-feat { font-size: 11px; font-family: var(--mono); color: var(--muted); width: 180px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; }
+  .imp-bar  { flex: 1; height: 10px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .imp-fill { height: 100%; background: var(--accent); border-radius: 3px; opacity: .7; transition: width .5s; }
+  .imp-num  { font-size: 10px; font-family: var(--mono); color: var(--muted); width: 55px; text-align: right; }
+
+  /* Log */
+  .log-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+  .log-header { padding: 12px 18px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 500; display: flex; justify-content: space-between; align-items: center; }
+  .log-body { padding: 12px 18px; font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 1.8; max-height: 140px; overflow-y: auto; }
+  .log-entry { }
+  .log-ts   { color: var(--accent); }
+  .log-ok   { color: var(--green); }
+  .log-err  { color: var(--red); }
+
+  /* Loading */
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .idle-msg { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 14px; }
+  .idle-msg .big { font-size: 36px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-dot"></div>
+  <h1>FDC-AI — Equipment Fault Detection Dashboard</h1>
+  <span class="header-sub"><span class="status-dot" id="status-dot"></span><span id="status-text">Connecting...</span></span>
+</div>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <div>
+      <div class="section-label">Model performance</div>
+      <div class="metric-row" id="model-metrics">
+        <div class="metric-card"><div class="metric-label">F1 Score</div><div class="metric-val val-blue" id="m-f1">—</div></div>
+        <div class="metric-card"><div class="metric-label">AUC-ROC</div><div class="metric-val val-blue" id="m-auc">—</div></div>
+        <div class="metric-card"><div class="metric-label">AUC-PR</div><div class="metric-val val-blue" id="m-aupr">—</div></div>
+        <div class="metric-card"><div class="metric-label">Threshold</div><div class="metric-val val-blue" id="m-thr">—</div></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Demo prediction</div>
+      <div class="radio-group" style="margin-bottom:10px">
+        <button class="radio-btn selected" onclick="setMode('random', this)">Random</button>
+        <button class="radio-btn" onclick="setMode('fault', this)">Fault sample</button>
+        <button class="radio-btn" onclick="setMode('normal', this)">Normal sample</button>
+      </div>
+      <button class="btn primary" onclick="runDemo()">Run prediction</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">Global feature importance</div>
+      <button class="btn" onclick="loadImportance()">Load SHAP importance</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <div class="section-label">API</div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);line-height:1.8">
+        GET  /health<br>
+        GET  /metrics<br>
+        POST /predict<br>
+        GET  /demo<br>
+        GET  /importance<br>
+        <a href="/docs" style="color:var(--accent)">→ /docs (Swagger UI)</a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Result -->
+    <div class="result-card" id="result-card">
+      <div class="idle-msg">
+        <div class="big">⚙️</div>
+        Select a sample type and click <strong>Run prediction</strong>
+      </div>
+    </div>
+
+    <!-- SHAP -->
+    <div class="shap-card" id="shap-card" style="display:none">
+      <div class="shap-title">SHAP sensor attribution <span class="tag">top 10 features</span></div>
+      <div id="shap-bars"></div>
+      <div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--muted)">
+        <span><span style="display:inline-block;width:10px;height:10px;background:var(--red);border-radius:2px;margin-right:4px;opacity:.75"></span>Pushes toward FAULT</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:4px;opacity:.75"></span>Pushes toward NORMAL</span>
+      </div>
+    </div>
+
+    <!-- Global importance -->
+    <div class="importance-card" id="imp-card" style="display:none">
+      <div class="shap-title">Global feature importance <span class="tag">mean |SHAP|</span></div>
+      <div id="imp-bars"></div>
+    </div>
+
+    <!-- Log -->
+    <div class="log-card">
+      <div class="log-header">
+        <span>Prediction log</span>
+        <span style="font-size:11px;color:var(--muted);cursor:pointer" onclick="clearLog()">clear</span>
+      </div>
+      <div class="log-body" id="log-body">
+        <div class="log-entry"><span class="log-ts">[init]</span> Dashboard loaded. Awaiting predictions.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = '';   // same origin
+let demoMode = 'random';
+
+function setMode(mode, el) {
+  demoMode = mode;
+  document.querySelectorAll('.radio-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function log(msg, cls='') {
+  const body = document.getElementById('log-body');
+  const ts = new Date().toLocaleTimeString();
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="log-ts">[${ts}]</span> <span class="${cls}">${msg}</span>`;
+  body.appendChild(entry);
+  body.scrollTop = body.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('log-body').innerHTML = '';
+}
+
+async function checkHealth() {
+  try {
+    const r = await fetch(API + '/health');
+    const d = await r.json();
+    const dot  = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+    if (d.models_loaded) {
+      dot.style.background = '#22c55e';
+      text.textContent = 'Models loaded — ready';
+      log('API connected. Models loaded.', 'log-ok');
+      loadMetrics();
+    } else {
+      dot.style.background = '#f97316';
+      text.textContent = 'API up — models not loaded (run train.py)';
+      log('Models not loaded. Run python train.py first.', 'log-err');
+    }
+  } catch(e) {
+    document.getElementById('status-dot').style.background = '#ef4444';
+    document.getElementById('status-text').textContent = 'API offline';
+    log('Cannot reach API. Is uvicorn running?', 'log-err');
+  }
+}
+
+async function loadMetrics() {
+  try {
+    const r = await fetch(API + '/metrics');
+    const d = await r.json();
+    const m = d.metrics;
+    document.getElementById('m-f1').textContent  = m.f1    ?? '—';
+    document.getElementById('m-auc').textContent = m.auc_roc ?? '—';
+    document.getElementById('m-aupr').textContent= m.auc_pr  ?? '—';
+    document.getElementById('m-thr').textContent = m.threshold ?? '—';
+  } catch(e) { /* silent */ }
+}
+
+async function runDemo() {
+  const btn = document.querySelector('.btn.primary');
+  btn.innerHTML = '<span class="spinner"></span>Running...';
+  btn.disabled = true;
+
+  let url = API + '/demo';
+  if (demoMode === 'fault')  url += '?fault=true';
+  if (demoMode === 'normal') url += '?fault=false';
+
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+    renderResult(d);
+    log(`Prediction — ${d.fault_label} (proba: ${d.fault_proba}, true: ${d.true_label_str})`,
+        d.fault_pred === 1 ? 'log-err' : 'log-ok');
+  } catch(e) {
+    log(`Error: ${e.message}`, 'log-err');
+  } finally {
+    btn.innerHTML = 'Run prediction';
+    btn.disabled = false;
+  }
+}
+
+function renderResult(d) {
+  const isF = d.fault_pred === 1;
+  const probaColor = d.fault_proba > 0.7 ? '#ef4444' : d.fault_proba > 0.4 ? '#f97316' : '#22c55e';
+
+  const card = document.getElementById('result-card');
+  card.innerHTML = `
+    <div class="result-header">
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">VERDICT</div>
+        <div class="verdict ${isF ? 'fault' : 'normal'}">${d.fault_label}</div>
+      </div>
+      <div class="proba-bar-wrap" style="margin:0 18px">
+        <div class="proba-label">Fault probability</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="proba-bar" style="flex:1">
+            <div class="proba-fill" style="width:${(d.fault_proba*100).toFixed(1)}%;background:${probaColor}"></div>
+          </div>
+          <div class="proba-val">${(d.fault_proba*100).toFixed(1)}%</div>
+        </div>
+      </div>
+      ${d.true_label_str ? `
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">TRUE LABEL</div>
+        <div style="font-size:14px;font-weight:500;font-family:var(--mono);color:${d.true_label===1?'#ef4444':'#22c55e'}">${d.true_label_str}</div>
+      </div>` : ''}
+    </div>
+    <div class="score-row">
+      <div class="score-cell">
+        <div class="score-name">Isolation Forest score</div>
+        <div class="score-val ${d.iso_score > 0.7 ? 'val-red' : 'val-green'}">${d.iso_score.toFixed(3)}</div>
+        <div class="score-badge ${d.iso_score > 0.5 ? 'badge-anomaly' : 'badge-normal'}">${d.iso_score > 0.5 ? 'Anomalous' : 'Normal'}</div>
+      </div>
+      <div class="score-cell">
+        <div class="score-name">Autoencoder recon error</div>
+        <div class="score-val ${d.ae_anomaly ? 'val-red' : 'val-green'}">${d.ae_score.toFixed(5)}</div>
+        <div class="score-badge ${d.ae_anomaly ? 'badge-anomaly' : 'badge-normal'}">${d.ae_anomaly ? 'Above threshold' : 'Below threshold'}</div>
+      </div>
+      <div class="score-cell">
+        <div class="score-name">XGBoost fault probability</div>
+        <div class="score-val ${isF ? 'val-red' : 'val-green'}">${(d.fault_proba*100).toFixed(1)}%</div>
+        <div class="score-badge ${isF ? 'badge-anomaly' : 'badge-normal'}">${d.fault_label}</div>
+      </div>
+    </div>
+  `;
+
+  // SHAP
+  if (d.shap && d.shap.features) {
+    renderSHAP(d.shap);
+  }
+}
+
+function renderSHAP(shap) {
+  const card = document.getElementById('shap-card');
+  card.style.display = 'block';
+  const bars = document.getElementById('shap-bars');
+  bars.innerHTML = '';
+
+  const vals = shap.shap_values;
+  const maxAbs = Math.max(...vals.map(Math.abs));
+
+  shap.features.forEach((feat, i) => {
+    const val  = vals[i];
+    const pct  = Math.abs(val) / (maxAbs + 1e-9) * 50;   // max 50% from center
+    const isPos = val > 0;
+
+    const row = document.createElement('div');
+    row.className = 'shap-row';
+    row.innerHTML = `
+      <div class="shap-feat" title="${feat}">${feat}</div>
+      <div class="shap-bar-wrap">
+        <div class="shap-center"></div>
+        <div class="shap-bar-inner ${isPos ? 'shap-pos' : 'shap-neg'}"
+             style="width:${pct}%;${isPos ? 'left:50%' : `left:calc(50% - ${pct}%)`}"></div>
+      </div>
+      <div class="shap-num">${val >= 0 ? '+' : ''}${val.toFixed(4)}</div>
+    `;
+    bars.appendChild(row);
+  });
+}
+
+async function loadImportance() {
+  log('Loading global feature importance...');
+  try {
+    const r = await fetch(API + '/importance');
+    if (!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+    renderImportance(d);
+    log('Global importance loaded.', 'log-ok');
+  } catch(e) {
+    log(`Error loading importance: ${e.message}`, 'log-err');
+  }
+}
+
+function renderImportance(d) {
+  const card = document.getElementById('imp-card');
+  card.style.display = 'block';
+  const bars = document.getElementById('imp-bars');
+  bars.innerHTML = '';
+
+  const max = Math.max(...d.importance);
+  d.features.forEach((feat, i) => {
+    const pct = (d.importance[i] / max * 100).toFixed(1);
+    const row = document.createElement('div');
+    row.className = 'imp-row';
+    row.innerHTML = `
+      <div class="imp-feat" title="${feat}">${feat}</div>
+      <div class="imp-bar"><div class="imp-fill" style="width:${pct}%"></div></div>
+      <div class="imp-num">${d.importance[i].toFixed(4)}</div>
+    `;
+    bars.appendChild(row);
+  });
+}
+
+// Init
+checkHealth();
+</script>
+</body>
+</html>
